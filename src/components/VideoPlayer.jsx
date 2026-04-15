@@ -42,6 +42,13 @@ function YouTubePlayer({ videoId, elapsedSeconds, onTimeUpdate }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [showPlayOverlay, setShowPlayOverlay] = useState(true);
   const lastAllowedTimeRef = useRef(elapsedSeconds || 0);
+  const hasSeekedRef = useRef(false);
+  const onTimeUpdateRef = useRef(onTimeUpdate);
+
+  // Keep ref up to date
+  useEffect(() => {
+    onTimeUpdateRef.current = onTimeUpdate;
+  }, [onTimeUpdate]);
 
   useEffect(() => {
     // Load YouTube IFrame API
@@ -63,6 +70,7 @@ function YouTubePlayer({ videoId, elapsedSeconds, onTimeUpdate }) {
         height: '100%',
         playerVars: {
           autoplay: 1,
+          mute: 1,              // Mute to ensure autoplay works in all browsers
           controls: 0,          // Hide ALL controls
           modestbranding: 1,    // Minimize branding
           rel: 0,               // No related videos
@@ -77,8 +85,9 @@ function YouTubePlayer({ videoId, elapsedSeconds, onTimeUpdate }) {
         },
         events: {
           onReady: (event) => {
-            if (elapsedSeconds > 0) {
+            if (elapsedSeconds > 0 && !hasSeekedRef.current) {
               event.target.seekTo(elapsedSeconds, true);
+              hasSeekedRef.current = true;
             }
             event.target.playVideo();
             lastAllowedTimeRef.current = elapsedSeconds || 0;
@@ -93,7 +102,7 @@ function YouTubePlayer({ videoId, elapsedSeconds, onTimeUpdate }) {
                 try { event.target.playVideo(); } catch { /* Ignore */ }
               }, 300);
             } else if (event.data === window.YT.PlayerState.ENDED) {
-              if (onTimeUpdate) onTimeUpdate(-1);
+              if (onTimeUpdateRef.current) onTimeUpdateRef.current(-1);
             }
           }
         }
@@ -107,7 +116,7 @@ function YouTubePlayer({ videoId, elapsedSeconds, onTimeUpdate }) {
         playerRef.current = null;
       }
     };
-  }, [videoId, elapsedSeconds, onTimeUpdate]);
+  }, [videoId]);
 
   // Poll current time + anti-seek enforcement
   useEffect(() => {
@@ -126,8 +135,8 @@ function YouTubePlayer({ videoId, elapsedSeconds, onTimeUpdate }) {
 
           lastAllowedTimeRef.current = Math.max(lastAllowedTimeRef.current, currentTime);
 
-          if (onTimeUpdate && currentTime > 0) {
-            onTimeUpdate(currentTime);
+          if (onTimeUpdateRef.current && currentTime > 0) {
+            onTimeUpdateRef.current(currentTime);
           }
         }
       } catch {
@@ -138,10 +147,11 @@ function YouTubePlayer({ videoId, elapsedSeconds, onTimeUpdate }) {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isPlaying, onTimeUpdate]);
+  }, [isPlaying]);
 
   const handlePlayClick = () => {
     if (playerRef.current && playerRef.current.playVideo) {
+      if (playerRef.current.unMute) playerRef.current.unMute();
       playerRef.current.playVideo();
     }
     setShowPlayOverlay(false);
@@ -155,7 +165,7 @@ function YouTubePlayer({ videoId, elapsedSeconds, onTimeUpdate }) {
       {/* Invisible overlay to block all mouse interaction with YouTube UI */}
       <div className="yt-block-overlay" />
 
-      {/* Custom play button shown on first load */}
+      {/* Custom play button / unmute button shown on first load */}
       {showPlayOverlay && (
         <div className="yt-play-overlay" onClick={handlePlayClick}>
           <div className="yt-play-btn">
@@ -163,6 +173,9 @@ function YouTubePlayer({ videoId, elapsedSeconds, onTimeUpdate }) {
               <polygon points="5,3 19,12 5,21" fill="white" />
             </svg>
           </div>
+          <p style={{ color: 'white', marginTop: '12px', fontWeight: 500 }}>
+            Click to Participate in Webinar
+          </p>
         </div>
       )}
     </div>
@@ -176,9 +189,12 @@ function VimeoPlayer({ videoId, elapsedSeconds, onTimeUpdate }) {
   const containerRef = useRef(null);
   const playerRef = useRef(null);
   const initializedRef = useRef(false);
+  const hasSeekedRef = useRef(false);
+  const onTimeUpdateRef = useRef(onTimeUpdate);
 
-  const handleTimeUpdate = useCallback((data) => {
-    if (onTimeUpdate) onTimeUpdate(data.seconds);
+  // Keep ref up to date
+  useEffect(() => {
+    onTimeUpdateRef.current = onTimeUpdate;
   }, [onTimeUpdate]);
 
   useEffect(() => {
@@ -190,7 +206,7 @@ function VimeoPlayer({ videoId, elapsedSeconds, onTimeUpdate }) {
       width: '100%',
       height: '100%',
       autoplay: true,
-      muted: false,
+      muted: true, // Auto-mute for better compatibility
       controls: false,
       loop: false,
       responsive: true,
@@ -204,32 +220,65 @@ function VimeoPlayer({ videoId, elapsedSeconds, onTimeUpdate }) {
     playerRef.current = player;
 
     player.ready().then(() => {
-      if (elapsedSeconds > 0) {
+      // Perform initial seek only once
+      if (elapsedSeconds > 0 && !hasSeekedRef.current) {
         player.setCurrentTime(elapsedSeconds).then(() => {
           player.play().catch(() => {});
+          hasSeekedRef.current = true;
         });
       } else {
         player.play().catch(() => {});
       }
-      player.on('timeupdate', handleTimeUpdate);
-      player.on('ended', () => { if (onTimeUpdate) onTimeUpdate(-1); });
+      
+      player.on('timeupdate', (data) => {
+        if (onTimeUpdateRef.current) onTimeUpdateRef.current(data.seconds);
+      });
+      
+      player.on('ended', () => {
+        if (onTimeUpdateRef.current) onTimeUpdateRef.current(-1);
+      });
     }).catch(() => {
       // Handle Vimeo initialization failure
     });
 
     return () => {
       if (playerRef.current) {
-        playerRef.current.off('timeupdate', handleTimeUpdate);
         playerRef.current.destroy().catch(() => { /* Cleanly ignore destroy errors */ });
         playerRef.current = null;
         initializedRef.current = false;
       }
     };
-  }, [videoId, elapsedSeconds, handleTimeUpdate, onTimeUpdate]);
+  }, [videoId]); // CRITICAL: Only depend on videoId
 
   return (
     <div className="video-container" id="video-player">
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+      {/* Tap to Unmute overlay for Vimeo */}
+      <div 
+        style={{ 
+          position: 'absolute', 
+          top: 0, left: 0, right: 0, bottom: 0, 
+          zIndex: 10, cursor: 'pointer',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(0,0,0,0.4)',
+          backdropFilter: 'blur(4px)'
+        }}
+        onClick={() => {
+          if (playerRef.current) playerRef.current.setMuted(false);
+          const overlay = document.getElementById('vimeo-unmute-overlay');
+          if (overlay) overlay.style.display = 'none';
+        }}
+        id="vimeo-unmute-overlay"
+      >
+        <div className="yt-play-btn">
+          <svg viewBox="0 0 24 24" width="48" height="48">
+            <polygon points="5,3 19,12 5,21" fill="white" />
+          </svg>
+        </div>
+        <p style={{ color: 'white', marginTop: '12px', fontWeight: 500 }}>
+          Click to Participate in Webinar
+        </p>
+      </div>
     </div>
   );
 }
