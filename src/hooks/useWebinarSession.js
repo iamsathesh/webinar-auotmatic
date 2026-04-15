@@ -7,10 +7,25 @@ import { getWebinarStatus, getElapsedSeconds, getSecondsUntilStart } from '../ut
  * determines if we're in countdown, live, or ended state.
  */
 export function useWebinarSession() {
-  const [session, setSession] = useState(null);
-  const [status, setStatus] = useState('loading'); // loading | countdown | live | ended | no-session
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [secondsUntilStart, setSecondsUntilStart] = useState(0);
+  const [session, setSession] = useState(() => getSession());
+
+  const [status, setStatus] = useState(() => {
+    const s = getSession();
+    if (!s) return 'no-session';
+    return getWebinarStatus(s.startTime, s.durationMinutes);
+  });
+
+  const [elapsedSeconds, setElapsedSeconds] = useState(() => {
+    const s = getSession();
+    if (!s) return 0;
+    return getWebinarStatus(s.startTime, s.durationMinutes) === 'live' ? getElapsedSeconds(s.startTime) : 0;
+  });
+
+  const [secondsUntilStart, setSecondsUntilStart] = useState(() => {
+    const s = getSession();
+    if (!s) return 0;
+    return getWebinarStatus(s.startTime, s.durationMinutes) === 'countdown' ? getSecondsUntilStart(s.startTime) : 0;
+  });
 
   const refresh = useCallback(() => {
     const s = getSession();
@@ -30,9 +45,13 @@ export function useWebinarSession() {
     }
   }, []);
 
-  // Initial load
+  // Initial load sync is now handled by useState initializers.
+  // We keep useEffect for external updates if needed, but remove the synchronous refresh call.
   useEffect(() => {
-    refresh();
+    // Session could have changed in localStorage from another tab
+    const handleStorage = () => refresh();
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, [refresh]);
 
   // Tick every second for countdown or live updates

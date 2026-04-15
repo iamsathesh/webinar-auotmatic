@@ -90,7 +90,7 @@ function YouTubePlayer({ videoId, elapsedSeconds, onTimeUpdate }) {
             } else if (event.data === window.YT.PlayerState.PAUSED) {
               // Auto-resume if paused (prevent pausing)
               setTimeout(() => {
-                try { event.target.playVideo(); } catch(e) {}
+                try { event.target.playVideo(); } catch { /* Ignore */ }
               }, 300);
             } else if (event.data === window.YT.PlayerState.ENDED) {
               if (onTimeUpdate) onTimeUpdate(-1);
@@ -103,11 +103,11 @@ function YouTubePlayer({ videoId, elapsedSeconds, onTimeUpdate }) {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (playerRef.current && playerRef.current.destroy) {
-        try { playerRef.current.destroy(); } catch(e) {}
+        try { playerRef.current.destroy(); } catch { /* Ignore */ }
         playerRef.current = null;
       }
     };
-  }, [videoId]);
+  }, [videoId, elapsedSeconds, onTimeUpdate]);
 
   // Poll current time + anti-seek enforcement
   useEffect(() => {
@@ -130,7 +130,9 @@ function YouTubePlayer({ videoId, elapsedSeconds, onTimeUpdate }) {
             onTimeUpdate(currentTime);
           }
         }
-      } catch (e) {}
+      } catch {
+        // Silently ignore polling errors
+      }
     }, 1000);
 
     return () => {
@@ -211,17 +213,19 @@ function VimeoPlayer({ videoId, elapsedSeconds, onTimeUpdate }) {
       }
       player.on('timeupdate', handleTimeUpdate);
       player.on('ended', () => { if (onTimeUpdate) onTimeUpdate(-1); });
-    }).catch(err => console.error('Vimeo player error:', err));
+    }).catch(() => {
+      // Handle Vimeo initialization failure
+    });
 
     return () => {
       if (playerRef.current) {
         playerRef.current.off('timeupdate', handleTimeUpdate);
-        playerRef.current.destroy().catch(() => {});
+        playerRef.current.destroy().catch(() => { /* Cleanly ignore destroy errors */ });
         playerRef.current = null;
         initializedRef.current = false;
       }
     };
-  }, [videoId]);
+  }, [videoId, elapsedSeconds, handleTimeUpdate, onTimeUpdate]);
 
   return (
     <div className="video-container" id="video-player">

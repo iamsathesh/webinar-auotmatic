@@ -4,7 +4,7 @@ import { getAvatarColor, getInitials, formatChatTime } from '../utils/timeUtils'
 /**
  * Chat panel with fake messages synced to video time + user input area.
  */
-export default function ChatPanel({ messages, hasNewMessage, onSendMessage }) {
+export default function ChatPanel({ messages, onSendMessage }) {
   const messagesEndRef = useRef(null);
   const [inputValue, setInputValue] = useState('');
 
