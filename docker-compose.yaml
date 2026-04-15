@@ -3,7 +3,5 @@ version: '3.8'
 services:
   webinar-system:
     build: .
-    ports:
-      - "8080:80"
     restart: always
     container_name: webinar_automatic
