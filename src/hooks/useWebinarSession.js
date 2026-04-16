@@ -1,40 +1,31 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getSession } from '../utils/storage';
+import { getWorkshopBySlug } from '../utils/storage';
 import { getWebinarStatus, getElapsedSeconds, getSecondsUntilStart } from '../utils/timeUtils';
 
 /**
- * Hook that manages webinar session state —
- * determines if we're in countdown, live, or ended state.
+ * Hook that manages a specific workshop session state —
+ * determines if we're in countdown, live, or ended state for a given slug.
  */
-export function useWebinarSession() {
-  const [session, setSession] = useState(() => getSession());
-
-  const [status, setStatus] = useState(() => {
-    const s = getSession();
-    if (!s) return 'no-session';
-    return getWebinarStatus(s.startTime, s.durationMinutes);
-  });
-
-  const [elapsedSeconds, setElapsedSeconds] = useState(() => {
-    const s = getSession();
-    if (!s) return 0;
-    return getWebinarStatus(s.startTime, s.durationMinutes) === 'live' ? getElapsedSeconds(s.startTime) : 0;
-  });
-
-  const [secondsUntilStart, setSecondsUntilStart] = useState(() => {
-    const s = getSession();
-    if (!s) return 0;
-    return getWebinarStatus(s.startTime, s.durationMinutes) === 'countdown' ? getSecondsUntilStart(s.startTime) : 0;
-  });
+export function useWebinarSession(slug) {
+  const [session, setSession] = useState(null);
+  const [status, setStatus] = useState('loading');
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [secondsUntilStart, setSecondsUntilStart] = useState(0);
 
   const refresh = useCallback(() => {
-    const s = getSession();
-    if (!s) {
+    if (!slug) {
       setStatus('no-session');
       return;
     }
+    
+    const s = getWorkshopBySlug(slug);
+    if (!s) {
+      setStatus('no-session');
+      setSession(null);
+      return;
+    }
+    
     setSession(s);
-
     const newStatus = getWebinarStatus(s.startTime, s.durationMinutes);
     setStatus(newStatus);
 
@@ -43,18 +34,21 @@ export function useWebinarSession() {
     } else if (newStatus === 'countdown') {
       setSecondsUntilStart(getSecondsUntilStart(s.startTime));
     }
-  }, []);
+  }, [slug]);
 
-  // Initial load sync is now handled by useState initializers.
-  // We keep useEffect for external updates if needed, but remove the synchronous refresh call.
+  // Initial load
   useEffect(() => {
-    // Session could have changed in localStorage from another tab
+    refresh();
+  }, [refresh]);
+
+  // Sync with storage changes
+  useEffect(() => {
     const handleStorage = () => refresh();
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
   }, [refresh]);
 
-  // Tick every second for countdown or live updates
+  // Tick every second
   useEffect(() => {
     if (status === 'loading' || status === 'no-session' || status === 'ended') return;
 

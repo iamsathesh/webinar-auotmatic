@@ -21,26 +21,9 @@ export default function SessionEnded({ title }) {
         Thank you for your interest. Stay tuned for future sessions!
       </p>
 
-      <a
-        href="/admin"
-        style={{
-          marginTop: 'var(--space-xl)',
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: '8px',
-          padding: '12px 24px',
-          background: 'var(--bg-glass)',
-          border: '1px solid var(--border-medium)',
-          borderRadius: 'var(--radius-full)',
-          color: 'var(--text-secondary)',
-          fontSize: 'var(--font-size-sm)',
-          fontWeight: 600,
-          textDecoration: 'none',
-          transition: 'all 0.25s ease',
-        }}
-      >
-        ← Back to Admin
-      </a>
+      <div style={{ marginTop: 'var(--space-2xl)', color: 'var(--text-muted)', fontSize: 'var(--font-size-xs)' }}>
+        &copy; 2026 Expertisor Academy. All rights reserved.
+      </div>
     </div>
   );
 }

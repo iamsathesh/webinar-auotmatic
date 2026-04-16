@@ -19,10 +19,14 @@ FROM nginx:stable-alpine
 # Copy the build output from Stage 1 to Nginx's public directory
 COPY --from=build /app/dist /usr/share/nginx/html
 
-# Copy a basic Nginx config to handle React Router (SPA) routing
-# This ensures that refreshing on /admin or /webinar doesn't 404
+# Copy Nginx config with Permissions-Policy headers for YouTube iframe
 RUN echo 'server { \
     listen 80; \
+    \
+    # Allow YouTube iframe features (autoplay, encrypted-media, etc.) \
+    add_header Permissions-Policy "autoplay=*, encrypted-media=*, accelerometer=*, gyroscope=*, picture-in-picture=*, fullscreen=*" always; \
+    add_header X-Frame-Options "" always; \
+    \
     location / { \
         root /usr/share/nginx/html; \
         index index.html index.htm; \

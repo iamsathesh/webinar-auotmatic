@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Player from '@vimeo/player';
 
 /**
@@ -30,6 +30,20 @@ function parseVideoSource(input) {
   if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) return { platform: 'youtube', id: trimmed };
 
   return { platform: 'vimeo', id: trimmed };
+}
+
+/**
+ * Patches the YouTube iframe 'allow' attribute so the browser permits
+ * autoplay, encrypted-media, etc. inside the cross-origin iframe.
+ */
+function patchYouTubeIframe() {
+  const iframe = document.querySelector('#yt-player-el iframe, #yt-player-el');
+  if (iframe && iframe.tagName === 'IFRAME') {
+    iframe.setAttribute(
+      'allow',
+      'autoplay; encrypted-media; accelerometer; gyroscope; picture-in-picture; fullscreen'
+    );
+  }
 }
 
 /**
@@ -81,10 +95,14 @@ function YouTubePlayer({ videoId, elapsedSeconds, onTimeUpdate }) {
           playsinline: 1,       // Inline on mobile
           cc_load_policy: 0,    // No captions by default
           start: Math.floor(elapsedSeconds || 0),
-          origin: window.location.origin,
+          // NOTE: 'origin' is intentionally omitted to avoid postMessage
+          // mismatch on http subdomains (sslip.io, etc.)
         },
         events: {
           onReady: (event) => {
+            // Patch the iframe allow attribute for permissions policy
+            patchYouTubeIframe();
+
             if (elapsedSeconds > 0 && !hasSeekedRef.current) {
               event.target.seekTo(elapsedSeconds, true);
               hasSeekedRef.current = true;
