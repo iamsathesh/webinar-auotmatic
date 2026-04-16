@@ -5,3 +5,7 @@ services:
     build: .
     restart: always
     container_name: webinar_automatic
+    expose:
+      - "80"
+    ports:
+      - "80:80"
