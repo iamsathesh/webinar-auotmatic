@@ -94,7 +94,8 @@ function YouTubePlayer({ videoId, elapsedSeconds, onTimeUpdate }) {
           fs: 0,                // No fullscreen button
           playsinline: 1,       // Inline on mobile
           cc_load_policy: 0,    // No captions by default
-          start: Math.floor(elapsedSeconds || 0),
+          cc_load_policy: 0,    // No captions by default
+          // Wait to fetch accurate duration before seeking.
           // NOTE: 'origin' is intentionally omitted to avoid postMessage
           // mismatch on http subdomains (sslip.io, etc.)
         },
@@ -103,12 +104,15 @@ function YouTubePlayer({ videoId, elapsedSeconds, onTimeUpdate }) {
             // Patch the iframe allow attribute for permissions policy
             patchYouTubeIframe();
 
+            const duration = event.target.getDuration() || 1;
+            const actualSeekTime = elapsedSeconds % duration;
+
             if (elapsedSeconds > 0 && !hasSeekedRef.current) {
-              event.target.seekTo(elapsedSeconds, true);
+              event.target.seekTo(actualSeekTime, true);
               hasSeekedRef.current = true;
             }
             event.target.playVideo();
-            lastAllowedTimeRef.current = elapsedSeconds || 0;
+            lastAllowedTimeRef.current = actualSeekTime || 0;
           },
           onStateChange: (event) => {
             if (event.data === window.YT.PlayerState.PLAYING) {
@@ -121,6 +125,10 @@ function YouTubePlayer({ videoId, elapsedSeconds, onTimeUpdate }) {
               }, 300);
             } else if (event.data === window.YT.PlayerState.ENDED) {
               if (onTimeUpdateRef.current) onTimeUpdateRef.current(-1);
+              // Seamlessly loop the video to keep the "live" illusion running
+              event.target.seekTo(0);
+              event.target.playVideo();
+              lastAllowedTimeRef.current = 0;
             }
           }
         }
@@ -238,15 +246,20 @@ function VimeoPlayer({ videoId, elapsedSeconds, onTimeUpdate }) {
     playerRef.current = player;
 
     player.ready().then(() => {
-      // Perform initial seek only once
-      if (elapsedSeconds > 0 && !hasSeekedRef.current) {
-        player.setCurrentTime(elapsedSeconds).then(() => {
+      player.getDuration().then((duration) => {
+        const actualExt = duration || 1;
+        const actualSeekTime = elapsedSeconds % actualExt;
+
+        // Perform initial seek only once
+        if (elapsedSeconds > 0 && !hasSeekedRef.current) {
+          player.setCurrentTime(actualSeekTime).then(() => {
+            player.play().catch(() => {});
+            hasSeekedRef.current = true;
+          });
+        } else {
           player.play().catch(() => {});
-          hasSeekedRef.current = true;
-        });
-      } else {
-        player.play().catch(() => {});
-      }
+        }
+      }).catch(() => { player.play().catch(() => {}); });
       
       player.on('timeupdate', (data) => {
         if (onTimeUpdateRef.current) onTimeUpdateRef.current(data.seconds);
@@ -254,6 +267,9 @@ function VimeoPlayer({ videoId, elapsedSeconds, onTimeUpdate }) {
       
       player.on('ended', () => {
         if (onTimeUpdateRef.current) onTimeUpdateRef.current(-1);
+        player.setCurrentTime(0).then(() => {
+           player.play().catch(() => {});
+        });
       });
     }).catch(() => {
       // Handle Vimeo initialization failure
