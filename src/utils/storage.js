@@ -106,45 +106,46 @@ export async function getWorkshopBySlug(slug) {
   }
 }
 
-export async function saveWorkshop(workshop) {
+export async function saveWorkshop(workshopData) {
   try {
     const now = new Date().toISOString();
+    const { id, ...data } = workshopData;
     
-    if (workshop.id) {
+    if (id) {
       // Update
-      const { data, error } = await supabase
+      const { data: updated, error } = await supabase
         .from('workshops')
         .update({
-          ...workshop,
+          ...data,
           updatedAt: now
         })
-        .eq('id', workshop.id)
+        .eq('id', id)
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      return updated;
     } else {
-      // Create - need to handle slug generation
-      // Fetch existing slugs to avoid collisions
+      // Create
       const { data: existing } = await supabase.from('workshops').select('slug');
       const slugs = existing?.map(w => w.slug) || [];
       
       const newWorkshop = {
-        ...workshop,
-        slug: generateSlug(workshop.title, slugs),
+        ...data,
+        id: crypto.randomUUID(), // Reliable frontend-side UUID generation
+        slug: generateSlug(data.title, slugs),
         createdAt: now,
         updatedAt: now
       };
 
-      const { data, error } = await supabase
+      const { data: created, error } = await supabase
         .from('workshops')
         .insert([newWorkshop])
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      return created;
     }
   } catch (err) {
     console.error('Failed to save workshop:', err);
