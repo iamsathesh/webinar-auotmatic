@@ -11,7 +11,7 @@ export default function AdminLogin() {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (adminLogin(username, password)) {
-      navigate('/admin');
+      navigate('/studio-admin');
     } else {
       setError('Invalid username or password');
     }

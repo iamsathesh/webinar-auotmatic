@@ -37,7 +37,7 @@ export default function AdminPage() {
 
   const handleLogout = () => {
     adminLogout();
-    navigate('/admin/login');
+    navigate('/studio-admin/login');
   };
 
   const getStatusColor = (status) => {
@@ -60,7 +60,7 @@ export default function AdminPage() {
           Workshop Studio
         </div>
         <div className="admin-nav__actions">
-          <button onClick={() => navigate('/admin/create')} className="btn-primary">
+          <button onClick={() => navigate('/studio-admin/create')} className="btn-primary">
             + Create New Workshop
           </button>
           <button onClick={handleLogout} className="btn-ghost">
@@ -85,7 +85,7 @@ export default function AdminPage() {
             <div className="empty-state__icon">📁</div>
             <h2>No workshops yet</h2>
             <p>Ready to start? Create your first automated workshop link below.</p>
-            <button onClick={() => navigate('/admin/create')} className="btn-primary">
+            <button onClick={() => navigate('/studio-admin/create')} className="btn-primary">
               Get Started
             </button>
           </div>
@@ -130,7 +130,7 @@ export default function AdminPage() {
                       Preview
                     </button>
                     <button 
-                      onClick={() => navigate(`/admin/edit/${w.id}`)}
+                      onClick={() => navigate(`/studio-admin/edit/${w.id}`)}
                       className="btn-action"
                     >
                       Edit

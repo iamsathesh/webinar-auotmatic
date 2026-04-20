@@ -2,27 +2,25 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 
 /**
  * Hook that manages fake chat messages based on current video time.
- * Returns visible messages + user messages.
+ * User messages are stored in local React state only — complete isolation.
+ * User A never sees User B's messages. Only fake/admin messages are universal.
  */
 export function useFakeChat(chatMessages, currentVideoTime) {
   const [userMessages, setUserMessages] = useState([]);
   const prevCountRef = useRef(0);
   const [hasNewMessage, setHasNewMessage] = useState(false);
 
-  const messages = useMemo(() => {
+  const fakeMessages = useMemo(() => {
     return (chatMessages || []).filter(m => m.time <= currentVideoTime);
   }, [chatMessages, currentVideoTime]);
 
   useEffect(() => {
-    if (messages.length > prevCountRef.current) {
-      requestAnimationFrame(() => {
-        setHasNewMessage(true);
-        // Reset after a brief moment
-        setTimeout(() => setHasNewMessage(false), 500);
-      });
+    if (fakeMessages.length > prevCountRef.current) {
+      setHasNewMessage(true);
+      setTimeout(() => setHasNewMessage(false), 500);
     }
-    prevCountRef.current = messages.length;
-  }, [messages.length]);
+    prevCountRef.current = fakeMessages.length;
+  }, [fakeMessages.length]);
 
   const addUserMessage = (name, message) => {
     setUserMessages(prev => [
@@ -32,14 +30,14 @@ export function useFakeChat(chatMessages, currentVideoTime) {
         name,
         message,
         isUser: true,
-        id: `user-${Date.now()}`,
+        id: `user-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       },
     ]);
   };
 
-  // Merge and sort all messages
+  // Merge fake + user messages, sorted by time
   const allMessages = [
-    ...messages.map((m, i) => ({ ...m, id: `chat-${i}` })),
+    ...fakeMessages.map((m, i) => ({ ...m, id: `chat-${i}` })),
     ...userMessages,
   ].sort((a, b) => a.time - b.time);
 

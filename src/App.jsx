@@ -4,50 +4,30 @@ import AdminLogin from './pages/AdminLogin';
 import AdminPage from './pages/AdminPage';
 import WorkshopForm from './pages/WorkshopForm';
 import WorkshopPage from './pages/WorkshopPage';
+import InvalidLinkPage from './pages/InvalidLinkPage';
 
-// Simple protected route wrapper
+// Protected route wrapper
 const ProtectedRoute = ({ children }) => {
-  return isAdminLoggedIn() ? children : <Navigate to="/admin/login" replace />;
+  return isAdminLoggedIn() ? children : <Navigate to="/studio-admin/login" replace />;
 };
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public Workshop Link: workshop.expertisoracademy.com/:slug/join */}
+        {/* ── Public Workshop Routes ── */}
         <Route path="/:slug/join" element={<WorkshopPage />} />
-        
-        {/* Admin Routes */}
-        <Route path="/admin/login" element={<AdminLogin />} />
-        <Route 
-          path="/admin" 
-          element={
-            <ProtectedRoute>
-              <AdminPage />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/admin/create" 
-          element={
-            <ProtectedRoute>
-              <WorkshopForm />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/admin/edit/:id" 
-          element={
-            <ProtectedRoute>
-              <WorkshopForm />
-            </ProtectedRoute>
-          } 
-        />
 
-        {/* Global Redirects */}
-        <Route path="/" element={<Navigate to="/admin" replace />} />
-        <Route path="/webinar" element={<Navigate to="/" replace />} />
-        <Route path="*" element={<Navigate to="/admin" replace />} />
+        {/* ── Hidden Admin Routes ── */}
+        <Route path="/studio-admin/login" element={<AdminLogin />} />
+        <Route path="/studio-admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
+        <Route path="/studio-admin/create" element={<ProtectedRoute><WorkshopForm /></ProtectedRoute>} />
+        <Route path="/studio-admin/edit/:id" element={<ProtectedRoute><WorkshopForm /></ProtectedRoute>} />
+
+        {/* ── Everything else → Branded error page ── */}
+        <Route path="/" element={<InvalidLinkPage />} />
+        <Route path="/:slug" element={<InvalidLinkPage />} />
+        <Route path="*" element={<InvalidLinkPage />} />
       </Routes>
     </BrowserRouter>
   );

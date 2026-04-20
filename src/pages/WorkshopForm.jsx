@@ -61,7 +61,7 @@ export default function WorkshopForm() {
 
     const saved = await saveWorkshop(workshop);
     if (saved) {
-      navigate('/admin');
+      navigate('/studio-admin');
     } else {
       alert('Failed to save workshop');
       setSaving(false);
@@ -72,7 +72,7 @@ export default function WorkshopForm() {
     <div className="admin-form-page">
       <div className="admin-form-container">
         <header className="form-header">
-          <button onClick={() => navigate('/admin')} className="btn-back">← Back to Dashboard</button>
+          <button onClick={() => navigate('/studio-admin')} className="btn-back">← Back to Dashboard</button>
           <h1>{isEdit ? 'Edit Workshop' : 'Create New Workshop'}</h1>
         </header>
 
@@ -167,7 +167,7 @@ export default function WorkshopForm() {
           </div>
 
           <div className="form-footer">
-            <button type="button" onClick={() => navigate('/admin')} className="btn-secondary">Cancel</button>
+            <button type="button" onClick={() => navigate('/studio-admin')} className="btn-secondary">Cancel</button>
             <button type="submit" className="btn-primary">
               {isEdit ? 'Save Changes' : 'Create Workshop Link'}
             </button>
