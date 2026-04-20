@@ -55,11 +55,11 @@ export default function WorkshopPage() {
   const isCTAVisible = elapsedSeconds >= (session?.ctaTimeSeconds || 0);
 
   return (
-    <div className="webinar-layout" id="webinar-viewport">
+    <div id="webinar-page">
       <TopBar title={session?.title} />
       
-      <main className="webinar-main-content">
-        <div className="video-section">
+      <div className="webinar-layout">
+        <div className="webinar-main">
           <VideoPlayer 
             vimeoVideoId={session?.videoUrl} 
             elapsedSeconds={elapsedSeconds} 
@@ -72,13 +72,11 @@ export default function WorkshopPage() {
           />
         </div>
         
-        <aside className="chat-section">
-          <ChatPanel 
-            messages={messages} 
-            onSendMessage={sendMessage} 
-          />
-        </aside>
-      </main>
+        <ChatPanel 
+          messages={messages} 
+          onSendMessage={sendMessage} 
+        />
+      </div>
     </div>
   );
 }
