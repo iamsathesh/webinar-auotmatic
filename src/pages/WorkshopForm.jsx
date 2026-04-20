@@ -18,27 +18,34 @@ export default function WorkshopForm() {
     chatMessagesJson: JSON.stringify(DEFAULT_CHAT_MESSAGES, null, 2)
   });
 
+  const [saving, setSaving] = useState(false);
+
   useEffect(() => {
     if (isEdit) {
-      const existing = getWorkshopById(id);
-      if (existing) {
-        setFormData({
-          ...existing,
-          startTime: new Date(existing.startTime).toISOString().slice(0, 16),
-          chatMessagesJson: JSON.stringify(existing.chatMessages || [], null, 2)
-        });
+      async function load() {
+        const existing = await getWorkshopById(id);
+        if (existing) {
+          setFormData({
+            ...existing,
+            startTime: new Date(existing.startTime).toISOString().slice(0, 16),
+            chatMessagesJson: JSON.stringify(existing.chatMessages || [], null, 2)
+          });
+        }
       }
+      load();
     }
   }, [id, isEdit]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setSaving(true);
     
     let chatMessages = [];
     try {
       chatMessages = JSON.parse(formData.chatMessagesJson);
     } catch {
       alert('Invalid JSON in chat messages field.');
+      setSaving(false);
       return;
     }
 
@@ -52,8 +59,13 @@ export default function WorkshopForm() {
     // Clean up temporary field
     delete workshop.chatMessagesJson;
 
-    saveWorkshop(workshop);
-    navigate('/admin');
+    const saved = await saveWorkshop(workshop);
+    if (saved) {
+      navigate('/admin');
+    } else {
+      alert('Failed to save workshop');
+      setSaving(false);
+    }
   };
 
   return (

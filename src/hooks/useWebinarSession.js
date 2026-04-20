@@ -12,13 +12,13 @@ export function useWebinarSession(slug) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [secondsUntilStart, setSecondsUntilStart] = useState(0);
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback(async () => {
     if (!slug) {
       setStatus('no-session');
       return;
     }
     
-    const s = getWorkshopBySlug(slug);
+    const s = await getWorkshopBySlug(slug);
     if (!s) {
       setStatus('no-session');
       setSession(null);
@@ -39,13 +39,6 @@ export function useWebinarSession(slug) {
   // Initial load
   useEffect(() => {
     refresh();
-  }, [refresh]);
-
-  // Sync with storage changes
-  useEffect(() => {
-    const handleStorage = () => refresh();
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
   }, [refresh]);
 
   // Tick every second

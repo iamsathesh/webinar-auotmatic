@@ -5,17 +5,26 @@ import { getWebinarStatus } from '../utils/timeUtils';
 
 export default function AdminPage() {
   const [workshops, setWorkshops] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [copySuccess, setCopySuccess] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    setWorkshops(getAllWorkshops());
+    async function load() {
+      const data = await getAllWorkshops();
+      setWorkshops(data || []);
+      setLoading(false);
+    }
+    load();
   }, []);
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this workshop?')) {
-      deleteWorkshop(id);
-      setWorkshops(getAllWorkshops());
+      const success = await deleteWorkshop(id);
+      if (success) {
+        const data = await getAllWorkshops();
+        setWorkshops(data || []);
+      }
     }
   };
 
@@ -66,7 +75,12 @@ export default function AdminPage() {
           <p>You have {workshops.length} workshops configured.</p>
         </header>
 
-        {workshops.length === 0 ? (
+        {loading ? (
+          <div className="status-screen" style={{ height: '40vh' }}>
+            <div className="loading-spinner"></div>
+            <p>Fetching your workshops...</p>
+          </div>
+        ) : workshops.length === 0 ? (
           <div className="empty-state">
             <div className="empty-state__icon">📁</div>
             <h2>No workshops yet</h2>

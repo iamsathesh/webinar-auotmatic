@@ -31,9 +31,11 @@ export function adminLogout() {
   sessionStorage.removeItem(AUTH_KEY);
 }
 
+import { supabase } from './supabase';
+
 // ── Slug Utilities ────────────────────────────────────
 
-export function generateSlug(title) {
+export function generateSlug(title, existingSlugs = []) {
   const base = title
     .toLowerCase()
     .trim()
@@ -42,12 +44,11 @@ export function generateSlug(title) {
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
 
-  const existing = getAllWorkshops();
   let slug = base || 'workshop';
   let counter = 1;
 
   // Avoid collisions
-  while (existing.some(w => w.slug === slug)) {
+  while (existingSlugs.includes(slug)) {
     slug = `${base}-${counter}`;
     counter++;
   }
@@ -55,64 +56,113 @@ export function generateSlug(title) {
   return slug;
 }
 
-// ── Workshop CRUD ─────────────────────────────────────
+// ── Workshop CRUD (Supabase) ──────────────────────────
 
-export function getAllWorkshops() {
+export async function getAllWorkshops() {
   try {
-    const raw = localStorage.getItem(WORKSHOPS_KEY);
-    if (!raw) return [];
-    const data = JSON.parse(raw);
-    return Array.isArray(data) ? data : [];
-  } catch {
+    const { data, error } = await supabase
+      .from('workshops')
+      .select('*')
+      .order('startTime', { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  } catch (err) {
+    console.error('Failed to fetch workshops:', err);
     return [];
   }
 }
 
-export function getWorkshopById(id) {
-  return getAllWorkshops().find(w => w.id === id) || null;
-}
-
-export function getWorkshopBySlug(slug) {
-  if (!slug) return null;
-  return getAllWorkshops().find(w => w.slug === slug.toLowerCase()) || null;
-}
-
-export function saveWorkshop(workshop) {
+export async function getWorkshopById(id) {
   try {
-    const all = getAllWorkshops();
-    const now = Date.now();
+    const { data, error } = await supabase
+      .from('workshops')
+      .select('*')
+      .eq('id', id)
+      .single();
 
+    if (error) throw error;
+    return data;
+  } catch (err) {
+    console.error('Failed to fetch workshop by ID:', err);
+    return null;
+  }
+}
+
+export async function getWorkshopBySlug(slug) {
+  if (!slug) return null;
+  try {
+    const { data, error } = await supabase
+      .from('workshops')
+      .select('*')
+      .eq('slug', slug.toLowerCase())
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (err) {
+    console.error('Failed to fetch workshop by slug:', err);
+    return null;
+  }
+}
+
+export async function saveWorkshop(workshop) {
+  try {
+    const now = new Date().toISOString();
+    
     if (workshop.id) {
-      // Update existing
-      const idx = all.findIndex(w => w.id === workshop.id);
-      if (idx !== -1) {
-        all[idx] = { ...all[idx], ...workshop, updatedAt: now };
-      } else {
-        all.push({ ...workshop, createdAt: now, updatedAt: now });
-      }
-    } else {
-      // Create new
-      workshop.id = `wk_${now}`;
-      workshop.slug = generateSlug(workshop.title);
-      workshop.createdAt = now;
-      workshop.updatedAt = now;
-      all.push(workshop);
-    }
+      // Update
+      const { data, error } = await supabase
+        .from('workshops')
+        .update({
+          ...workshop,
+          updatedAt: now
+        })
+        .eq('id', workshop.id)
+        .select()
+        .single();
 
-    localStorage.setItem(WORKSHOPS_KEY, JSON.stringify(all));
-    return workshop;
+      if (error) throw error;
+      return data;
+    } else {
+      // Create - need to handle slug generation
+      // Fetch existing slugs to avoid collisions
+      const { data: existing } = await supabase.from('workshops').select('slug');
+      const slugs = existing?.map(w => w.slug) || [];
+      
+      const newWorkshop = {
+        ...workshop,
+        slug: generateSlug(workshop.title, slugs),
+        createdAt: now,
+        updatedAt: now
+      };
+
+      const { data, error } = await supabase
+        .from('workshops')
+        .insert([newWorkshop])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    }
   } catch (err) {
     console.error('Failed to save workshop:', err);
     return null;
   }
 }
 
-export function deleteWorkshop(id) {
+export async function deleteWorkshop(id) {
   try {
-    const all = getAllWorkshops().filter(w => w.id !== id);
-    localStorage.setItem(WORKSHOPS_KEY, JSON.stringify(all));
+    const { error } = await supabase
+      .from('workshops')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
     return true;
-  } catch {
+  } catch (err) {
+    console.error('Failed to delete workshop:', err);
     return false;
   }
 }
